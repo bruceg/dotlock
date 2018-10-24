@@ -7,3 +7,6 @@ description = "Create .lock files atomically on any filesystem."
 
 [dependencies]
 tempfile = "3"
+
+[dev-dependencies]
+structopt = { version = "0.2", default-features = false }
