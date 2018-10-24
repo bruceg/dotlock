@@ -3,6 +3,7 @@ extern crate dotlock;
 extern crate structopt;
 
 use dotlock::*;
+use std::num::ParseFloatError;
 use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
@@ -10,12 +11,17 @@ use std::process::{exit, Command};
 use std::time::Duration;
 use structopt::StructOpt;
 
+fn parse_duration(src: &str) -> Result<Duration, ParseFloatError> {
+    src.parse::<f64>()
+        .map(|f| Duration::from_secs(f.trunc() as u64) + Duration::from_nanos((f.fract() * 1000000000.0) as u64))
+}
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dotlock", about = "Utility to create .lock files")]
 struct Opt {
     /// Set retry delay
-    #[structopt(short = "d", long = "delay", default_value = "5 seconds")]
-    pause: f64,
+    #[structopt(short = "d", long = "delay", default_value = "5", parse(try_from_str = "parse_duration"))]
+    pause: Duration,
     /// Set number of retries
     #[structopt(short = "n", long = "tries", default_value = "10")]
     tries: usize,
@@ -37,8 +43,7 @@ fn main() {
     let mut lock = DotlockOptions::new()
     //.stale_age(std::time::Duration::from_secs(300))
         .tries(opts.tries)
-        .pause(Duration::from_secs(opts.pause.trunc() as u64)
-               + Duration::from_nanos((opts.pause.fract() * 1000000000.0) as u64))
+        .pause(opts.pause)
         .create(&opts.lockfile).unwrap_or_else(|err| {
             println!("dotlock: Fatal error: {}", err);
             exit(111);
