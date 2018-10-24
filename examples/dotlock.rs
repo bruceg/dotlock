@@ -25,6 +25,9 @@ struct Opt {
     /// Set number of retries
     #[structopt(short = "n", long = "tries", default_value = "10")]
     tries: usize,
+    /// Set the age at which an old lock file is removed
+    #[structopt(short = "s", long = "stale-age", parse(try_from_str = "parse_duration"))]
+    stale: Option<Duration>,
     /// Lock file
     #[structopt(parse(from_os_str))]
     lockfile: PathBuf,
@@ -40,11 +43,13 @@ fn main() {
     let opts = Opt::from_args();
     println!("{:?}", opts);
 
-    let mut lock = DotlockOptions::new()
-    //.stale_age(std::time::Duration::from_secs(300))
+    let mut dotopts = DotlockOptions::new()
         .tries(opts.tries)
-        .pause(opts.pause)
-        .create(&opts.lockfile).unwrap_or_else(|err| {
+        .pause(opts.pause);
+    if let Some(stale) = opts.stale {
+        dotopts = dotopts.stale_age(stale);
+    }
+    let mut lock = dotopts.create(&opts.lockfile).unwrap_or_else(|err| {
             println!("dotlock: Fatal error: {}", err);
             exit(111);
         });
