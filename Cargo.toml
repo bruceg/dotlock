@@ -1,0 +1,9 @@
+[package]
+name = "dotlock"
+version = "0.5.0"
+authors = ["Bruce Guenter <bruce@untroubled.org>"]
+license = "Unlicense"
+description = "Create .lock files atomically on any filesystem."
+
+[dependencies]
+tempfile = "3"
