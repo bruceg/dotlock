@@ -30,7 +30,7 @@
 //! locked the file. Return the opened file.
 //!
 //! 6. If the lock file is stale (older than a configured age), delete
-//! the existing lock file.
+//! the existing lock file and retry immediately.
 //!
 //! 7. Before retrying, sleep briefly (defaults to 5 seconds).
 
@@ -61,11 +61,8 @@ pub struct Dotlock {
 
 impl Dotlock {
     fn create_in(path: &Path, options: DotlockOptions, tempdir: &Path) -> Result<File> {
-        for trynum in 0..options.tries {
-            if trynum > 0 {
-                // Pause only before retrying
-                sleep(options.pause);
-            }
+        let mut trynum = 0;
+        loop {
             // Create a unique temporary file in the same directory
             let temp = Builder::new().tempfile_in(tempdir)?;
             let tempmeta = temp.as_file().metadata()?;
@@ -83,21 +80,27 @@ impl Dotlock {
                 if let Some(perm) = options.permissions {
                     temp.set_permissions(perm)?;
                 }
-                return Ok(temp);
+                break Ok(temp);
             }
             // Is the existing lock stale?
             if let Some(stale_age) = options.stale_age {
                 let now = SystemTime::now();
                 if let Ok(modtime) = destmeta.modified() {
                     if let Ok(age) = now.duration_since(modtime) {
-                        if age < stale_age {
+                        if age >= stale_age {
                             remove_file(&path).ok();
+                            continue;
                         }
                     }
                 }
             }
+            trynum += 1;
+            if trynum >= options.tries {
+                break Err(Error::new(ErrorKind::TimedOut, "Timed out"));
+            }
+            // Pause only before retrying
+            sleep(options.pause);
         }
-        Err(Error::new(ErrorKind::TimedOut, "Timed out"))
     }
 
     fn create_with(path: PathBuf, options: DotlockOptions) -> Result<Self> {
@@ -304,14 +307,16 @@ mod tests {
 
         let lock1 = Dotlock::create(lockfile);
         assert!(lock1.is_ok());
-        assert!(metadata(lockfile).is_ok());
+        assert!(exists(lockfile));
 
         let lock2 = DotlockOptions::new().tries(1).stale_age(Duration::from_secs(1)).create(lockfile);
         assert!(lock2.is_err());
+        assert!(exists(lockfile));
 
         sleep(Duration::from_millis(1100));
 
-        let lock3 = DotlockOptions::new().stale_age(Duration::from_secs(1)).create(lockfile);
+        let lock3 = DotlockOptions::new().tries(1).stale_age(Duration::from_secs(1)).create(lockfile);
         assert!(lock3.is_ok());
+        assert!(exists(lockfile));
     }
 }
