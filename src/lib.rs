@@ -38,7 +38,7 @@ extern crate tempfile;
 
 use std::fs::{remove_file, File, Metadata, Permissions};
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
-use std::os::linux::fs::MetadataExt;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
@@ -49,7 +49,7 @@ const DEFAULT_TRIES: usize = 10;
 
 // Do the two Metadata reference the same file?
 fn meta_eq(a: &Metadata, b: &Metadata) -> bool {
-    a.st_dev() == b.st_dev() && a.st_ino() == b.st_ino()
+    a.dev() == b.dev() && a.ino() == b.ino()
 }
 
 /// A created ".lock" file.
