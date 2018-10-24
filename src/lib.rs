@@ -1,9 +1,9 @@
 //! Create ".lock" files atomically on any filesystem.
 //!
 //! This crate contains support for creating lock files as are used on
-//! FIXME. This is similar to the `lockfile` program from
-//! [procmail](http://www.procmail.org) or the `dotlockfile` program
-//! from [liblockfile](https://github.com/miquels/liblockfile).
+//! various UNIX type systems. This is similar to the `lockfile` program
+//! from [procmail](http://www.procmail.org) or the `dotlockfile`
+//! program from [liblockfile](https://github.com/miquels/liblockfile).
 //!
 //! They are called ".lock" files, because they are traditionally named
 //! the same as the file they are referencing with the extension of
@@ -33,6 +33,18 @@
 //! the existing lock file and retry immediately.
 //!
 //! 7. Before retrying, sleep briefly (defaults to 5 seconds).
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use dotlock::DotlockOptions;
+//! use std::time::Duration;
+//!
+//! let _lock = DotlockOptions::new()
+//!     .tries(10)
+//!     .pause(Duration::from_secs(1))
+//!     .create("database.lock").unwrap();
+//! ```
 
 extern crate tempfile;
 
@@ -204,6 +216,7 @@ impl Write for Dotlock {
 ///
 /// ```no_run
 /// use dotlock::DotlockOptions;
+///
 /// DotlockOptions::new().create("database.lock").unwrap();
 /// ```
 ///
@@ -212,10 +225,12 @@ impl Write for Dotlock {
 ///
 /// ```no_run
 /// use dotlock::DotlockOptions;
+/// use std::time::Duration;
+///
 /// DotlockOptions::new()
-///                .tries(1)
-///                .stale_age(std::time::Duration::from_secs(300))
-///                .create("database.lock").unwrap();
+///     .tries(1)
+///     .stale_age(Duration::from_secs(300))
+///     .create("database.lock").unwrap();
 /// ```
 #[derive(Debug)]
 pub struct DotlockOptions {
